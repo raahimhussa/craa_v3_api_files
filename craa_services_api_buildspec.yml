@@ -1,0 +1,31 @@
+version: 0.2
+phases:
+  install:
+    commands:     
+      - echo installing npm dependencies...    
+      - npm i -g npm@latest
+      - npm i
+  pre_build:
+    commands:
+      # - echo `NODE_ENV` or `process.env.NODE_ENV`
+      - echo testing test scripts...
+      # - ./node_modules/.bin/jest     
+  build:
+    commands:
+      - echo build started on  `date`
+      - echo building application...
+      - npm run build
+  post_build:
+    commands:
+      - echo build completed on `date`
+      - echo copying node modules and Procfile
+      # - NODE_ENV=production
+      - cp -R node_modules/ dist/node_modules # nodejs needs this
+      - cp Procfile dist/Procfile # EBS needs this     
+      - cp config.json dist/config.json    
+artifacts:
+  files:
+    - "**/*"
+  discard-paths: no
+  base-directory: dist
+  

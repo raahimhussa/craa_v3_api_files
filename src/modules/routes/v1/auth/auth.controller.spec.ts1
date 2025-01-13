@@ -1,0 +1,106 @@
+import { Test } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
+import { HttpException, HttpStatus } from '@nestjs/common';
+import  UsersController  from '../users/users.controller';
+import  UsersService  from '../users/users.service';
+import  AuthController  from './auth.controller';
+import { MailerService } from '@nestjs-modules/mailer';
+import { RolesService } from '../roles/roles.service';
+import AuthService from './auth.service';
+import UsersBusinessService from '../users/business.service';
+
+export interface User {
+  _id: string;
+  email: string;
+  // emailVerificationLink: string;
+  // aliasEmails: string[];
+  // name: string;
+  // password: string;
+  // // Fill in other properties as needed...
+}
+
+describe('UsersController', () => {
+  let usersController: UsersController;
+  let usersService: UsersService;
+  let authController: AuthController;
+  let authService: AuthService;
+  let jwtService: JwtService;
+
+  let mockUsersService;
+
+  beforeEach(async () => {
+    const moduleRef = await Test.createTestingModule({
+      controllers: [UsersController],
+      providers: [
+        {
+          provide: UsersService,
+          useValue: {
+            getVerifiedUserByEmail: jest.fn(),
+          },
+        },
+        {
+          provide: JwtService,
+          useValue: {
+            sign: jest.fn(),
+          },
+        },
+      ],
+    }).compile();
+
+    usersController = moduleRef.get<UsersController>(UsersController);
+    usersService = moduleRef.get<UsersService>(UsersService);
+
+    authController = moduleRef.get<AuthController>(AuthController);
+    authService = moduleRef.get<AuthService>(AuthService);
+
+    jwtService = moduleRef.get<JwtService>(JwtService);
+  });
+
+  describe('requestPasswordReset', () => {
+    it('should return an error if no request body is provided', async () => {
+      const result = await authController.requestPasswordReset(null);
+      expect(result).toEqual({
+        success: false,
+        message: 'Something went wrong. Please try again later.',
+      });
+    });
+
+    it('should return an error if user with provided email does not exist', async () => {
+      const email = 'test@example.com';
+      jest.spyOn(usersService, 'getVerifiedUserByEmail').mockResolvedValue(null);
+
+      const result = await authController.requestPasswordReset({ email });
+      expect(result).toEqual({
+        success: false,
+        message: 'User with that email does not exist',
+      });
+    });
+
+    it('should generate a token and return success message if user with provided email exists', async () => {
+      const email = 'test@example.com';
+      const _user = { email, _id: '123' };
+      const mockUser: User = {
+        _id: '123',
+        email: 'test@example.com',
+        // emailVerificationLink: 'some-link',
+        // aliasEmails: [],
+        // name: 'Test User',
+        // password: 'password',
+        // Fill in other properties as needed...
+      };   
+      mockUsersService = { getVerifiedUserByEmail: jest.fn() };   
+      mockUsersService.getVerifiedUserByEmail.mockResolvedValue(mockUser);
+      // jest.spyOn(usersService, 'getVerifiedUserByEmail').mockResolvedValue(mockUser);
+      jest.spyOn(jwtService, 'sign').mockReturnValue('token');
+
+      const result = await authController.requestPasswordReset({ email });
+      expect(result).toEqual({
+        success: true,
+        message: 'Password reset link has been sent to your email',
+      });
+      expect(jwtService.sign).toHaveBeenCalledWith({ email, id: '123' });
+    });
+
+    // additional tests can be written to test the behavior of sending an email
+  });
+});
